@@ -5,24 +5,7 @@
 #include <linux/version.h>	/* LINUX_VERSION_CODE */
 #include <linux/types.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
-
-#define dev_get_iflink(_net_dev) ((_net_dev)->iflink)
-
-#endif /* < KERNEL_VERSION(4, 1, 0) */
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-
-#include <linux/netdevice.h>
-
-#define netdev_master_upper_dev_link(dev, upper_dev, upper_priv, upper_info, extack) ({\
-	BUILD_BUG_ON(upper_priv != NULL); \
-	BUILD_BUG_ON(upper_info != NULL); \
-	BUILD_BUG_ON(extack != NULL); \
-	netdev_master_upper_dev_link(dev, upper_dev); \
-})
-
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 
 #include <linux/netdevice.h>
 
@@ -31,78 +14,45 @@
 	netdev_master_upper_dev_link(dev, upper_dev, upper_priv, upper_info); \
 })
 
-#endif /* < KERNEL_VERSION(4, 5, 0) */
+#endif /* < KERNEL_VERSION(4, 15, 0) */
 
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
 
-/* wild hack for batadv_getlink_net only */
-#define get_link_net get_xstats_size || 1 ? fallback_net : (struct net*)netdev->rtnl_link_ops->get_xstats_size
+#include_next <linux/igmp.h>
+#include_next <net/addrconf.h>
 
-#endif /* < KERNEL_VERSION(4, 0, 0) */
-
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
-
-struct sk_buff *skb_checksum_trimmed(struct sk_buff *skb,
-				     unsigned int transport_len,
-				     __sum16(*skb_chkf)(struct sk_buff *skb));
-
-int ip_mc_check_igmp(struct sk_buff *skb, struct sk_buff **skb_trimmed);
-
-int ipv6_mc_check_mld(struct sk_buff *skb, struct sk_buff **skb_trimmed);
-
-#endif /* < KERNEL_VERSION(4, 2, 0) */
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
-
-#define IFF_NO_QUEUE	0; dev->tx_queue_len = 0
-
-static inline bool hlist_fake(struct hlist_node *h)
+static inline int batadv_ipv6_mc_check_mld1(struct sk_buff *skb)
 {
-	return h->pprev == &h->next;
+	return ipv6_mc_check_mld(skb, NULL);
 }
 
-#endif /* < KERNEL_VERSION(4, 3, 0) */
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
-
-#include <linux/ethtool.h>
-
-#define ethtool_link_ksettings batadv_ethtool_link_ksettings
-
-struct batadv_ethtool_link_ksettings {
-	struct {
-		__u32	speed;
-		__u8	duplex;
-		__u8    autoneg;
-	} base;
-};
-
-#define __ethtool_get_link_ksettings(__dev, __link_settings) \
-	batadv_ethtool_get_link_ksettings(__dev, __link_settings)
-
-static inline int
-batadv_ethtool_get_link_ksettings(struct net_device *dev,
-				  struct ethtool_link_ksettings *link_ksettings)
+static inline int batadv_ipv6_mc_check_mld2(struct sk_buff *skb,
+					    struct sk_buff **skb_trimmed)
 {
-	struct ethtool_cmd cmd;
-	int ret;
-
-	memset(&cmd, 0, sizeof(cmd));
-	ret = __ethtool_get_settings(dev, &cmd);
-
-	if (ret != 0)
-		return ret;
-
-	link_ksettings->base.duplex = cmd.duplex;
-	link_ksettings->base.speed = ethtool_cmd_speed(&cmd);
-	link_ksettings->base.autoneg = cmd.autoneg;
-
-	return 0;
+	return ipv6_mc_check_mld(skb, skb_trimmed);
 }
 
-#endif /* < KERNEL_VERSION(4, 6, 0) */
+#define ipv6_mc_check_mld_get(_1, _2, ipv6_mc_check_mld_name, ...) ipv6_mc_check_mld_name
+#define ipv6_mc_check_mld(...) \
+	ipv6_mc_check_mld_get(__VA_ARGS__, batadv_ipv6_mc_check_mld2, batadv_ipv6_mc_check_mld1)(__VA_ARGS__)
+
+static inline int batadv_ip_mc_check_igmp1(struct sk_buff *skb)
+{
+	return ip_mc_check_igmp(skb, NULL);
+}
+
+static inline int batadv_ip_mc_check_igmp2(struct sk_buff *skb,
+					   struct sk_buff **skb_trimmed)
+{
+	return ip_mc_check_igmp(skb, skb_trimmed);
+}
+
+#define ip_mc_check_igmp_get(_1, _2, ip_mc_check_igmp_name, ...) ip_mc_check_igmp_name
+#define ip_mc_check_igmp(...) \
+	ip_mc_check_igmp_get(__VA_ARGS__, batadv_ip_mc_check_igmp2, batadv_ip_mc_check_igmp1)(__VA_ARGS__)
+
+#endif /* < KERNEL_VERSION(5, 1, 0) */
 
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
