@@ -72,7 +72,7 @@ endef
 define Package/quagga-libzebra
   $(call Package/quagga/Default)
   TITLE:=zebra library
-  DEPENDS:=+libubacktrace
+  DEPENDS:=+libubacktrace +librt
 endef
 
 define Package/quagga-libospf
